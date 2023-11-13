@@ -10,6 +10,8 @@ import android.widget.Toast
 import java.util.Timer
 import java.util.TimerTask
 import android.util.Log
+import android.telephony.SmsManager
+
 
 class MessageService : Service() {
 
@@ -39,7 +41,6 @@ class MessageService : Service() {
         }, 0, interval)
     }
 
-
     private fun showMessage() {
         Log.d("MessageService", "showMessage called")
         handler.post {
@@ -47,12 +48,12 @@ class MessageService : Service() {
             val message = serviceIntent?.getStringExtra("message") ?: ""
 
             Log.d("MessageService", "Phone number: $phoneNumber, Message: $message")
-            val applicationContext = this@MessageService.applicationContext
-            Toast.makeText(applicationContext, "$phoneNumber: $message", Toast.LENGTH_SHORT).show()
+
+            // Use SmsManager to send SMS
+            val smsManager = SmsManager.getDefault()
+            smsManager.sendTextMessage(phoneNumber, null, message, null, null)
         }
     }
-
-
 
     override fun onDestroy() {
         super.onDestroy()

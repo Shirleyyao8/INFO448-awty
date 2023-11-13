@@ -17,11 +17,15 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextWatcher
 import android.view.inputmethod.InputMethodManager
-
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 
 class MainActivity : AppCompatActivity() {
 
     private var isServiceRunning = false
+    private val SMSPERMISSIONREQUESTCODE = 123
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -66,23 +70,32 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     private fun startMessageService(interval: Long) {
         val msg = findViewById<EditText>(R.id.msg)
         val num = findViewById<EditText>(R.id.phoneNumber)
         val message = msg.text.toString()
         val phoneNum = num.text.toString().toInt()
 
-        val serviceIntent = Intent(this, MessageService::class.java)
-        serviceIntent.putExtra("interval", interval)
-        serviceIntent.putExtra("message", message)
-        serviceIntent.putExtra("phoneNum", phoneNum)
+        // Check for the SEND_SMS permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            // Permission not granted, request it
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.SEND_SMS), SMSPERMISSIONREQUESTCODE)
+        } else {
+            // Permission granted, proceed with starting the MessageService
+            val serviceIntent = Intent(this, MessageService::class.java)
+            serviceIntent.putExtra("interval", interval)
+            serviceIntent.putExtra("message", message)
+            serviceIntent.putExtra("phoneNum", phoneNum)
 
-        startService(serviceIntent)
-        isServiceRunning = true
+            startService(serviceIntent)
+            isServiceRunning = true
 
-        val btnStartStop: Button = findViewById(R.id.startButton)
-        btnStartStop.text = "Stop"
+            val btnStartStop: Button = findViewById(R.id.startButton)
+            btnStartStop.text = "Stop"
+        }
     }
+
 
     private fun stopMessageService() {
         val serviceIntent = Intent(this, MessageService::class.java)
@@ -93,4 +106,25 @@ class MainActivity : AppCompatActivity() {
         btnStartStop.text = "Start"
 
     }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults) // Add this line
+        when (requestCode) {
+            SMSPERMISSIONREQUESTCODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission granted, proceed with starting the MessageService
+                    val minute = findViewById<EditText>(R.id.minute)
+                    val intervalText = minute.text.toString()
+                    if (intervalText.isNotEmpty() && intervalText.toInt() > 0) {
+                        val interval = intervalText.toLong() * 60 * 1000
+                        startMessageService(interval)
+                    }
+                } else {
+                    // Permission denied, handle accordingly
+                    Toast.makeText(this, "Permission denied. SMS cannot be sent.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
 }
